@@ -6,10 +6,8 @@ import time
 import joblib
 import tensorflow as tf
 
-# Disable GPU for consistency
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-# Global model cache
 _model_cache = {}
 
 def get_cached_model():
@@ -40,10 +38,8 @@ def get_cached_model():
 
 def extract_vibration_features_fast(vibration_series):
     """Optimized feature extraction"""
-    # Convert to numpy array efficiently
     data = np.asarray(vibration_series, dtype=np.float32)
     
-    # Handle NaN values efficiently
     mask = ~np.isnan(data)
     if not np.any(mask):
         return np.array([0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
@@ -52,7 +48,6 @@ def extract_vibration_features_fast(vibration_series):
     if len(clean_data) == 0:
         return np.array([0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
     
-    # Vectorized calculations
     features = np.array([
         np.mean(clean_data),
         np.std(clean_data),
@@ -68,33 +63,26 @@ def predict_fault_fast(input_file):
     start_time = time.time()
     
     try:
-        # Get cached model components
         cache = get_cached_model()
         model = cache['model']
         scaler = cache['scaler'] 
         imputer = cache['imputer']
         threshold = cache['config'].get('threshold', 0.5)
         
-        # Load input data
         with open(input_file, 'r') as f:
             data = json.load(f)
         
-        # Extract data
         vibration = data.get('vibration', [0] * 100)
         temp = float(data.get('temp', 50.0))
         voltage = float(data.get('voltage', 220.0))
         
-        # Fast feature extraction
         vib_features = extract_vibration_features_fast(vibration)
         
-        # Create feature vector efficiently
         features = np.array([[temp, voltage] + vib_features.tolist()], dtype=np.float32)
         
-        # Preprocessing
         features_imputed = imputer.transform(features)
         features_scaled = scaler.transform(features_imputed)
         
-        # Fast prediction
         prob = float(model.predict(features_scaled, verbose=0)[0][0])
         fault = 1 if prob > threshold else 0
         
@@ -111,7 +99,6 @@ def predict_fault_fast(input_file):
         }
         
     except Exception as e:
-        # Fallback
         latency = (time.time() - start_time) * 1000
         return {
             "fault": 0,

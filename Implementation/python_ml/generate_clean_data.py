@@ -3,7 +3,7 @@ import pandas as pd
 import os
 
 num_samples = 1000
-fault_probability = 0.21  # 21% fault rate as mentioned in conversation
+fault_probability = 0.21  
 vibration_length = 100
 script_dir = os.path.dirname(__file__)
 output_file = os.path.join(script_dir, "clean_synthetic_data.csv")
@@ -18,19 +18,14 @@ for _ in range(num_samples):
 
     time = np.linspace(0, 10, vibration_length)
     if is_fault:
-        # More dramatic fault signature for better classification
         vibration = 2.5 * np.sin(3 * time) + 1.5 * np.sin(7 * time) + np.random.normal(0, 0.6, vibration_length)
     else:
-        # Normal operation with less noise
         vibration = np.sin(time) + 0.1 * np.sin(5 * time) + np.random.normal(0, 0.15, vibration_length)
 
-    # No NaN values - create clean data
     vibration = vibration.tolist()
 
-    # Temperature: higher for faults
     temp = np.random.normal(70 if is_fault else 50, 4 if is_fault else 2)
     
-    # Voltage: higher for faults  
     voltage = np.random.normal(245 if is_fault else 220, 8 if is_fault else 4)
 
     data["vibration"].append(vibration)

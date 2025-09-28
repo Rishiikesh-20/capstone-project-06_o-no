@@ -7,7 +7,6 @@ import time
 import joblib
 import tensorflow as tf
 
-# Disable GPU for consistency
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 def extract_vibration_features(vibration_series):
@@ -17,23 +16,20 @@ def extract_vibration_features(vibration_series):
     else:
         data = np.array(vibration_series, dtype=float)
     
-    # Handle NaN values
     if np.all(np.isnan(data)):
-        return [0.0, 0.0, 0.0, 0.0, 0.0]  # Return zeros if all NaN
+        return [0.0, 0.0, 0.0, 0.0, 0.0]  
     
-    # Remove NaN values for calculations
     clean_data = data[~np.isnan(data)]
     
     if len(clean_data) == 0:
         return [0.0, 0.0, 0.0, 0.0, 0.0]
     
-    # Statistical features
     features = [
-        np.mean(clean_data),      # Mean vibration
-        np.std(clean_data),       # Standard deviation (variability)
-        np.max(clean_data),       # Maximum peak
-        np.min(clean_data),       # Minimum value
-        len(clean_data) / len(data)  # Data completeness ratio
+        np.mean(clean_data),      
+        np.std(clean_data),       
+        np.max(clean_data),       
+        np.min(clean_data),       
+        len(clean_data) / len(data) 
     ]
     
     return features

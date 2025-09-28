@@ -26,11 +26,6 @@ public class CustomTupleScheduler extends TupleScheduler {
         this.module = module;
     }
 
-    /**
-     * Submits a tuple (cloudlet) for execution, prioritizing based on tuple type.
-     * @param cl the cloudlet (tuple) to submit
-     * @return expected time to complete the cloudlet
-     */
     @Override
     public double cloudletSubmit(Cloudlet cl) {
         if (cl instanceof Tuple) {
@@ -72,10 +67,7 @@ public class CustomTupleScheduler extends TupleScheduler {
         return super.cloudletSubmit(cl); 
     }
 
-    /**
-     * Handles tuple completion.
-     * @param rcl the ResCloudlet (tuple) that finished
-     */
+
     @Override
     public void cloudletFinish(ResCloudlet rcl) {
         if (rcl.getCloudlet() instanceof Tuple) {
@@ -99,11 +91,6 @@ public class CustomTupleScheduler extends TupleScheduler {
         super.cloudletFinish(rcl);
     }
 
-    /**
-     * Determines priority based on tuple type.
-     * @param tuple the tuple to prioritize
-     * @return priority value (lower is higher priority)
-     */
     private int getPriority(Tuple tuple) {
         switch (tuple.getTupleType()) {
             case "SENSOR":

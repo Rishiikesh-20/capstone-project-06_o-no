@@ -82,3 +82,5 @@ out/
 *.exe
 *.dll
 *.csv
+
+*.pkl

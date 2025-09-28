@@ -147,7 +147,6 @@ public class IntelliPdM {
         appMap.put(appId, app);
         for (FogDevice fd : fogDevices) {
             fd.setApplicationMap(appMap);
-            // Initialize only if absent to avoid wiping previously registered modules
             if (!fd.getAppToModulesMap().containsKey(appId)) {
                 fd.getAppToModulesMap().put(appId, new ArrayList<>());
             }

@@ -162,7 +162,7 @@ public class EdgeMLModule extends AppModule {
             stopTuple.setActuatorId(actuator.getId());
             sendTuple(stopTuple, "STOP_ACTUATOR");
             
-            LOGGER.info("🚨 EdgeML triggered STOP for Machine-" + machineId + 
+            LOGGER.info(" EdgeML triggered STOP for Machine-" + machineId + 
                        " (probability=" + String.format("%.3f", probability) + 
                        ", method=" + method + ") at time " + String.format("%.2f", CloudSim.clock()));
                        
