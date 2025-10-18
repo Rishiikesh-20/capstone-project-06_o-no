@@ -1,15 +1,24 @@
 import numpy as np
 import pandas as pd
+import warnings
 
 from config import FEATURE_COLUMNS, FAULT_TYPES, DATASET_PATH
 
 def load_and_prepare_dataset():
-    """Load your specific dataset and prepare it for the models."""
+    """Load your specific dataset and prepare it for the models with enhanced error handling."""
     try:
         print(f"Attempting to load dataset from {DATASET_PATH}...")
         df = pd.read_csv(DATASET_PATH)
+        
+        if df.empty:
+            raise ValueError(f"Dataset at {DATASET_PATH} is empty!")
+        
         print(f"✓ Successfully loaded {len(df)} samples from {DATASET_PATH}")
 
+        required_cols = FEATURE_COLUMNS + ['TWF', 'HDF', 'PWF', 'OSF', 'RNF', 'Machine failure']
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            raise ValueError(f"Missing required columns: {missing_cols}")
 
         conditions = [
             (df['TWF'] == 1),
@@ -22,13 +31,26 @@ def load_and_prepare_dataset():
         choices = [1, 2, 3, 4, 5, 5]
         df['Fault_Label'] = np.select(conditions, choices, default=0)
         
+        normal_ratio = (df['Fault_Label'] == 0).sum() / len(df)
+        if normal_ratio > 0.7:
+            warnings.warn(f"⚠ Dataset is highly imbalanced! Normal class: {normal_ratio*100:.1f}%. "
+                         f"Using class weights to mitigate.", UserWarning)
+        
         final_cols = FEATURE_COLUMNS + ['Fault_Label']
         df_final = df[final_cols]
+        
+        if df_final.isnull().any().any():
+            warnings.warn("Dataset contains missing values. Filling with column means.", UserWarning)
+            df_final = df_final.fillna(df_final.mean())
+        
         print("✓ Dataset preprocessed: Created 'Fault_Label' and selected feature columns.")
         return df_final
             
     except FileNotFoundError:
         print(f"Error: Dataset file not found at '{DATASET_PATH}'. Please check the file path.")
+        exit()
+    except Exception as e:
+        print(f"Error loading dataset: {str(e)}")
         exit()
 
 def generate_runtime_sensor_data(scenario='Normal'):
