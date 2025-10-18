@@ -1,3 +1,8 @@
 *.csv#
 __pycache__/
 pdm_env
+ExtraFiles
+*.npy
+*.keras
+*.pkl
+*.png
