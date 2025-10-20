@@ -130,7 +130,10 @@ def sensor_process(env, edge_res, cloud_res, dqn_scheduler, metrics, scaler,
                    fault_prob_scale=1.0):
     scenarios = list(FAULT_TYPES.values())
     
-    base_probs = [0.7, 0.05, 0.05, 0.05, 0.05, 0.1]
+    # Adjusted probabilities to better reflect training data distribution
+    # This matches the augmented training data more closely for realistic simulation
+    base_probs = [0.78, 0.04, 0.01, 0.08, 0.07, 0.02]
+    # Normal: 78%, Tool Wear: 4%, Heat Dissipation: 1%, Power: 8%, Overstrain: 7%, Random: 2%
     
     if fault_prob_scale != 1.0:
         fault_probs = [p * fault_prob_scale for p in base_probs[1:]]

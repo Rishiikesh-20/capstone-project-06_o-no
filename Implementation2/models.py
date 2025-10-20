@@ -45,30 +45,55 @@ def train_edge_lightgbm_model(X_train, y_train, X_test, y_test):
         raise ImportError("LightGBM is required but not installed. Run: pip install lightgbm")
     
     if SMOTE_AVAILABLE:
-        print("Applying FULL SMOTE oversampling for maximum F1-score...")
-        smote = SMOTE(random_state=RANDOM_SEED, k_neighbors=3, sampling_strategy='auto')
+        print("Applying ADVANCED SMOTE oversampling with optimal strategy...")
+        # Use adaptive SMOTE strategy for better minority class handling
+        from collections import Counter
+        class_counts = Counter(y_train)
+        
+        # Calculate target counts: boost minority classes more aggressively
+        max_count = max(class_counts.values())
+        target_ratio = 0.5  # Target 50% of majority class
+        
+        sampling_strategy = {}
+        for cls, count in class_counts.items():
+            if cls != 0:  # Don't oversample normal class
+                target_count = int(max_count * target_ratio)
+                if count < target_count:
+                    sampling_strategy[cls] = target_count
+        
+        # Use higher k_neighbors for very small classes
+        min_samples = min(class_counts.values())
+        k_neighbors = min(5, max(1, min_samples - 1))
+        
+        smote = SMOTE(random_state=RANDOM_SEED, k_neighbors=k_neighbors, sampling_strategy=sampling_strategy)
         X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
         print(f"  Original: {X_train.shape[0]} samples")
-        print(f"  After SMOTE: {X_train_resampled.shape[0]} samples (fully balanced!)")
+        print(f"  After SMOTE: {X_train_resampled.shape[0]} samples")
         unique, counts = np.unique(y_train_resampled, return_counts=True)
         for cls, cnt in zip(unique, counts):
-            print(f"    Class {cls}: {cnt} samples")
+            print(f"    Class {cls} ({FAULT_TYPES[cls]}): {cnt} samples")
     else:
         X_train_resampled, y_train_resampled = X_train, y_train
         print("⚠ SMOTE not available, using class weights only")
     
-    sample_weights = compute_sample_weight('balanced', y_train_resampled)
+    # Calculate custom class weights for better minority class handling
+    from collections import Counter
+    class_counts = Counter(y_train_resampled)
+    max_count = max(class_counts.values())
+    class_weights = {cls: max_count / count for cls, count in class_counts.items()}
+    
+    sample_weights = np.array([class_weights[label] for label in y_train_resampled])
     
     lgbm = LGBMClassifier(
-        n_estimators=300, 
-        max_depth=10,  
-        num_leaves=100, 
-        learning_rate=0.03,  
-        min_child_samples=3,  
-        subsample=0.9, 
-        colsample_bytree=0.9,  
-        reg_alpha=0.05, 
-        reg_lambda=0.05, 
+        n_estimators=500,  # Increased for better learning
+        max_depth=15,  # Deeper trees for complex patterns
+        num_leaves=150,  # More leaves for granular splits
+        learning_rate=0.02,  # Slower learning for better convergence
+        min_child_samples=2,  # Lower threshold for minority classes
+        subsample=0.8,  # Slight regularization
+        colsample_bytree=0.8, 
+        reg_alpha=0.1,  # Increased L1 regularization
+        reg_lambda=0.1,  # Increased L2 regularization
         random_state=RANDOM_SEED,
         n_jobs=-1,
         device='cpu',
@@ -76,7 +101,9 @@ def train_edge_lightgbm_model(X_train, y_train, X_test, y_test):
         importance_type='gain',
         boosting_type='gbdt',
         objective='multiclass',
-        num_class=NUM_FAULT_CLASSES
+        num_class=NUM_FAULT_CLASSES,
+        is_unbalance=True,  # Enable built-in imbalance handling
+        min_gain_to_split=0.01  # Lower threshold for splits
     )
     
     start_time = time.time()
@@ -165,18 +192,33 @@ def train_cloud_lstm_model(X_train, y_train, X_test, y_test):
     print("-" * 50)
     
     if SMOTE_AVAILABLE:
-        print("Applying optimized SMOTE oversampling (balanced for speed)...")
+        print("Applying ADVANCED SMOTE oversampling for LSTM...")
         from collections import Counter
         class_counts = Counter(y_train)
-        majority_count = max(class_counts.values())
-        target_count = int(majority_count * 0.3)  
         
-        sampling_strategy = {cls: max(count, target_count) 
-                            for cls, count in class_counts.items() if count < target_count}
+        # Calculate adaptive target counts
+        max_count = max(class_counts.values())
+        target_ratio = 0.4  # Target 40% of majority class for balance
         
-        smote = SMOTE(random_state=RANDOM_SEED, k_neighbors=3, sampling_strategy=sampling_strategy)
+        sampling_strategy = {}
+        for cls, count in class_counts.items():
+            if cls != 0:  # Don't oversample normal class
+                target_count = int(max_count * target_ratio)
+                if count < target_count:
+                    sampling_strategy[cls] = target_count
+        
+        # Use adaptive k_neighbors
+        min_samples = min(class_counts.values())
+        k_neighbors = min(5, max(1, min_samples - 1))
+        
+        smote = SMOTE(random_state=RANDOM_SEED, k_neighbors=k_neighbors, sampling_strategy=sampling_strategy)
         X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
         print(f"  Original: {X_train.shape[0]} samples → After SMOTE: {X_train_resampled.shape[0]} samples")
+        
+        # Display class distribution
+        unique, counts = np.unique(y_train_resampled, return_counts=True)
+        for cls, cnt in zip(unique, counts):
+            print(f"    Class {cls} ({FAULT_TYPES[cls]}): {cnt} samples")
     else:
         X_train_resampled, y_train_resampled = X_train, y_train
     
@@ -186,10 +228,22 @@ def train_cloud_lstm_model(X_train, y_train, X_test, y_test):
     y_train_cat = to_categorical(y_train_resampled, num_classes=NUM_FAULT_CLASSES)
     y_test_cat = to_categorical(y_test, num_classes=NUM_FAULT_CLASSES)
     
-    sample_weights = compute_sample_weight('balanced', y_train_resampled)
+    # Calculate custom class weights
+    from collections import Counter
+    class_counts = Counter(y_train_resampled)
+    max_count = max(class_counts.values())
+    class_weight_dict = {cls: max_count / count for cls, count in class_counts.items()}
     
+    sample_weights = np.array([class_weight_dict[label] for label in y_train_resampled])
+    
+    # Enhanced LSTM architecture with better capacity
     model = Sequential([
-        LSTM(128, input_shape=(1, X_train.shape[1]), return_sequences=False),
+        Bidirectional(LSTM(256, return_sequences=True), input_shape=(1, X_train.shape[1])),
+        Dropout(0.4),
+        Bidirectional(LSTM(128, return_sequences=False)),
+        Dropout(0.3),
+        Dense(128, activation='relu'),
+        BatchNormalization(),
         Dropout(0.3),
         Dense(64, activation='relu'),
         BatchNormalization(),
@@ -198,17 +252,21 @@ def train_cloud_lstm_model(X_train, y_train, X_test, y_test):
         Dense(NUM_FAULT_CLASSES, activation='softmax')
     ])
     
-    optimizer = Adam(learning_rate=0.001)
-    model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+    optimizer = Adam(learning_rate=0.0005)  # Lower learning rate for stability
+    model.compile(
+        optimizer=optimizer, 
+        loss='categorical_crossentropy', 
+        metrics=['accuracy']
+    )
     
-    early_stop = EarlyStopping(monitor='val_loss', patience=8, restore_best_weights=True, verbose=0)
-    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=4, min_lr=0.0001, verbose=0)
+    early_stop = EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True, verbose=0)
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=7, min_lr=0.00001, verbose=0)
     
     start_time = time.time()
     model.fit(
         X_train_reshaped, y_train_cat,
-        epochs=50, 
-        batch_size=128, 
+        epochs=100,  # More epochs for better convergence
+        batch_size=64,  # Smaller batch size for better gradient estimates
         validation_split=0.2,
         sample_weight=sample_weights,
         callbacks=[early_stop, reduce_lr],

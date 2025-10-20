@@ -281,7 +281,8 @@ ax9.text(0.5, 0.5, summary_text, transform=ax9.transAxes,
 plt.tight_layout()
 plt.savefig('training_results.png', dpi=300, bbox_inches='tight')
 print("\n✓ Saved: training_results.png")
-plt.show()
+print("  (Visualization saved to file - not displaying interactively to avoid interruption)")
+# plt.show()  # Disabled to prevent KeyboardInterrupt - view training_results.png instead
 
 print("\n" + "="*80)
 print(" " * 30 + "FINAL SUMMARY")
