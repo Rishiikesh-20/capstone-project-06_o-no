@@ -1,4 +1,13 @@
 .env
 *.properties
 *.log
-venv/
+venv/# macOS
+.DS_Store
+
+# Python virtualenvs (project and subfolders)
+.venv/
+Implementation2/.venv/
+
+# caches
+__pycache__/
+*.pyc
